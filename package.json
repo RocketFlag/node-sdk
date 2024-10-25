@@ -1,0 +1,23 @@
+{
+  "name": "rocketflag-node-sdk",
+  "version": "0.1.0",
+  "author": "RocketFlag Developers (https://rocketflag.app)",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc -p ./tsconfig.json"
+  },
+  "keywords": [
+    "feature",
+    "flags",
+    "experiments"
+  ],
+  "license": "MIT",
+  "description": "The Node SDK for the RocketFlag service.",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "29.5.14",
+    "jest": "29.7.0",
+    "ts-jest": "^29.2.5"
+  }
+}
