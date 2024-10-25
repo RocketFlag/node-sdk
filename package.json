@@ -1,6 +1,6 @@
 {
   "name": "@rocketflag/node-sdk",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "author": "RocketFlag Developers (https://rocketflag.app)",
   "main": "./dist/index.js",
   "scripts": {
