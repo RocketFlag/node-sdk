@@ -1,5 +1,5 @@
 import createRocketflagClient from "./index";
-import { FlagStatus } from "./flags";
+import { FlagStatus } from "./index";
 
 // Mock the global fetch function
 global.fetch = jest.fn() as jest.Mock<Promise<Response>>;
@@ -24,6 +24,8 @@ describe("createRocketflagClient", () => {
   it("should create a client with custom options", () => {
     const client = createRocketflagClient("v2", "https://example.com/api");
     expect(client).toBeDefined();
+    expect(client.getFlag).toBeDefined();
+    expect(client.getFlag).toBeInstanceOf(Function);
   });
 
   describe("getFlag", () => {
@@ -48,30 +50,21 @@ describe("createRocketflagClient", () => {
       (fetch as jest.Mock).mockResolvedValue({ ok: false, statusText: "Not Found" });
 
       const client = createRocketflagClient();
-      const flag = await client.getFlag(flagId, userContext);
-
-      expect(flag).toBeInstanceOf(Error);
-      expect(flag).toStrictEqual(Error("Not Found"));
+      await expect(client.getFlag(flagId, userContext)).rejects.toThrow("Not Found");
     });
 
     it("should handle invalid responses from the server", async () => {
       (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ invalid: "response" }) });
 
       const client = createRocketflagClient();
-      const flag = await client.getFlag(flagId, userContext);
-
-      expect(flag).toBeInstanceOf(Error);
-      expect(flag).toStrictEqual(Error("Invalid response from server"));
+      await expect(client.getFlag(flagId, userContext)).rejects.toThrow("Invalid response from server");
     });
 
     it("should handle errors during the fetch request", async () => {
       (fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
 
       const client = createRocketflagClient();
-      const flag = await client.getFlag(flagId, userContext);
-
-      expect(flag).toBeInstanceOf(Error);
-      expect(flag).toStrictEqual(Error("Network error"));
+      await expect(client.getFlag(flagId, userContext)).rejects.toThrow("Network error");
     });
   });
 });

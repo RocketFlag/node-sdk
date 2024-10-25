@@ -2,7 +2,7 @@
   "name": "rocketflag-node-sdk",
   "version": "0.1.0",
   "author": "RocketFlag Developers (https://rocketflag.app)",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
     "test": "jest",
     "build": "tsc -p ./tsconfig.json"

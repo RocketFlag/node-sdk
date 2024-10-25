@@ -1,4 +1,4 @@
-import { FlagStatus } from "./flags";
+import { FlagStatus } from "./index";
 
 export const validateFlag = (flag: object): flag is FlagStatus => {
   return (
