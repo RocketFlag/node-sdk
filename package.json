@@ -1,5 +1,5 @@
 {
-  "name": "rocketflag-node-sdk",
+  "name": "@rocketflag/node-sdk",
   "version": "0.1.0",
   "author": "RocketFlag Developers (https://rocketflag.app)",
   "main": "./dist/index.js",
@@ -19,5 +19,13 @@
     "@types/jest": "29.5.14",
     "jest": "29.7.0",
     "ts-jest": "^29.2.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RocketFlag/node-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RocketFlag/node-sdk/issues"
+  },
+  "homepage": "https://github.com/RocketFlag/node-sdk#readme"
 }
