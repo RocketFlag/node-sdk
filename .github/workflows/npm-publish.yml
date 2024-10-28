@@ -31,7 +31,8 @@ jobs:
       - run: npm run build
       - run: |
           cp -r *.md ./dist/ && \
-          cp package.json ./dist/package.json
+          cp package.json ./dist/package.json && \
+          cd ./dist && rm *.test.*
       - run: npm publish ./dist --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
