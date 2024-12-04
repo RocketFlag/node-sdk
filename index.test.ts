@@ -5,7 +5,7 @@ import { FlagStatus } from "./index";
 global.fetch = jest.fn() as jest.Mock<Promise<Response>>;
 
 describe("createRocketflagClient", () => {
-  const apiUrl = "https://rocketflag.web.app";
+  const apiUrl = "https://api.rocketflag.app";
   const flagId = "test-flag";
   const userContext = { userId: "user123" };
 
