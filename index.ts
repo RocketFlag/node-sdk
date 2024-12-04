@@ -10,7 +10,7 @@ interface UserContext {
   [key: string]: string | number | boolean;
 }
 
-const createRocketflagClient = (version = "v1", apiUrl = "https://rocketflag.web.app") => {
+const createRocketflagClient = (version = "v1", apiUrl = "https://api.rocketflag.app") => {
   const cache: { [key: string]: FlagStatus } = {};
 
   const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
