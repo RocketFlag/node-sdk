@@ -142,5 +142,19 @@ describe("createRocketflagClient", () => {
       await expect(client.getFlag(flagId, userContext)).rejects.toThrow(InvalidResponseError);
       await expect(client.getFlag(flagId, userContext)).rejects.toThrow("Invalid response format: response is not an object");
     });
+
+    it("should throw an InvalidResponseError if validateFlag fails", async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            name: "Test Flag",
+            enabled: true,
+            // id: flagId, // Missing ID to make it fail validation
+          }),
+      });
+      const client = createRocketflagClient();
+      await expect(client.getFlag(flagId, userContext)).rejects.toThrow(InvalidResponseError);
+    });
   });
 });

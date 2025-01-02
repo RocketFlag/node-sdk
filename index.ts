@@ -49,7 +49,7 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
     }
 
     if (!response || typeof response !== "object") throw new InvalidResponseError("Invalid response format: response is not an object");
-    if (!validateFlag(response)) throw new Error("Invalid response from server");
+    if (!validateFlag(response)) throw new InvalidResponseError("Invalid response from server");
 
     return response;
   };
