@@ -1,4 +1,9 @@
+import { APIError, InvalidResponseError, NetworkError } from "./errors";
 import { validateFlag } from "./validateFlag";
+
+const GET_METHOD = "GET";
+const DEFAULT_API_URL = "https://api.rocketflag.app";
+const DEFAULT_VERSION = "v1";
 
 export type FlagStatus = {
   name: string;
@@ -7,15 +12,19 @@ export type FlagStatus = {
 };
 
 interface UserContext {
-  [key: string]: string | number | boolean;
+  cohort?: string | number | boolean;
 }
 
-const createRocketflagClient = (version = "v1", apiUrl = "https://api.rocketflag.app") => {
-  const cache: { [key: string]: FlagStatus } = {};
-
+const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL) => {
   const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
-    if (cache[flagId]) {
-      return cache[flagId];
+    if (!flagId) {
+      throw new Error("flagId is required");
+    }
+    if (typeof flagId !== "string") {
+      throw new Error("flagId must be a string");
+    }
+    if (typeof userContext !== "object") {
+      throw new Error("userContext must be an object");
     }
 
     const url = new URL(`${apiUrl}/${version}/flags/${flagId}`);
@@ -23,19 +32,25 @@ const createRocketflagClient = (version = "v1", apiUrl = "https://api.rocketflag
       url.searchParams.append(key, value.toString());
     });
 
-    const raw = await fetch(url, {
-      method: "GET",
-    });
+    let raw: Response;
+    try {
+      raw = await fetch(url, { method: GET_METHOD });
+    } catch (error) {
+      throw new NetworkError(`Network error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
 
-    if (!raw.ok) throw new Error(raw.statusText);
+    if (!raw.ok) throw new APIError(`API request failed with status ${raw.status}`, raw.status, raw.statusText);
 
-    const response: unknown = await raw.json();
+    let response: unknown;
+    try {
+      response = await raw.json();
+    } catch (error) {
+      throw new InvalidResponseError("Failed to parse JSON response");
+    }
 
-    if (!response) throw new Error("Invalid response from server");
-    if (typeof response !== "object") throw new Error("Invalid response from server");
-    if (!validateFlag(response)) throw new Error("Invalid response from server");
+    if (!response || typeof response !== "object") throw new InvalidResponseError("Invalid response format: response is not an object");
+    if (!validateFlag(response)) throw new InvalidResponseError("Invalid response from server");
 
-    cache[flagId] = response;
     return response;
   };
 
