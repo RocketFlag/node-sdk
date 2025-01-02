@@ -11,13 +11,7 @@ interface UserContext {
 }
 
 const createRocketflagClient = (version = "v1", apiUrl = "https://api.rocketflag.app") => {
-  const cache: { [key: string]: FlagStatus } = {};
-
   const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
-    if (cache[flagId]) {
-      return cache[flagId];
-    }
-
     const url = new URL(`${apiUrl}/${version}/flags/${flagId}`);
     Object.entries(userContext).forEach(([key, value]) => {
       url.searchParams.append(key, value.toString());
@@ -35,7 +29,6 @@ const createRocketflagClient = (version = "v1", apiUrl = "https://api.rocketflag
     if (typeof response !== "object") throw new Error("Invalid response from server");
     if (!validateFlag(response)) throw new Error("Invalid response from server");
 
-    cache[flagId] = response;
     return response;
   };
 
