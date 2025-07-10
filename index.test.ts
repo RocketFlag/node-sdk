@@ -122,6 +122,14 @@ describe("createRocketflagClient", () => {
       await expect(client.getFlag(123 as unknown as string, userContext)).rejects.toThrow("flagId must be a string");
     });
 
+    it("should throw an error if userContext contains invalid values", async () => {
+      const client = createRocketflagClient();
+      const invalidUserContext = { cohort: { a: 1 } };
+      await expect(client.getFlag(flagId, invalidUserContext as any)).rejects.toThrow(
+        "userContext values must be of type string, number, or boolean. Invalid value for key: cohort"
+      );
+    });
+
     it("should throw a NetworkError on network error", async () => {
       (fetch as jest.Mock).mockRejectedValue(new Error("Some network error"));
       const client = createRocketflagClient();

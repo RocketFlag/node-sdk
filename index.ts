@@ -27,8 +27,15 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
     if (typeof flagId !== "string") {
       throw new Error("flagId must be a string");
     }
-    if (typeof userContext !== "object") {
+    if (typeof userContext !== "object" || userContext === null) {
       throw new Error("userContext must be an object");
+    }
+
+    for (const key in userContext) {
+      const value = userContext[key as keyof UserContext];
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new Error(`userContext values must be of type string, number, or boolean. Invalid value for key: ${key}`);
+      }
     }
 
     const url = new URL(`${apiUrl}/${version}/flags/${flagId}`);
