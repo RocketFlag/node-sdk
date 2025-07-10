@@ -48,7 +48,7 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
     let response: unknown;
     try {
       response = await raw.json();
-    } catch (error) {
+    } catch {
       throw new InvalidResponseError("Failed to parse JSON response");
     }
 

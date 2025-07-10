@@ -119,7 +119,7 @@ describe("createRocketflagClient", () => {
 
     it("should throw an error if flagId is not a string", async () => {
       const client = createRocketflagClient();
-      await expect(client.getFlag(123 as any, userContext)).rejects.toThrow("flagId must be a string");
+      await expect(client.getFlag(123 as unknown as string, userContext)).rejects.toThrow("flagId must be a string");
     });
 
     it("should throw a NetworkError on network error", async () => {
