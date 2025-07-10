@@ -11,11 +11,15 @@ export type FlagStatus = {
   id: string;
 };
 
-interface UserContext {
+export interface UserContext {
   cohort?: string | number | boolean;
 }
 
-const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL) => {
+export interface RocketFlagClient {
+  getFlag: (flagId: string, context?: UserContext) => Promise<FlagStatus>;
+}
+
+const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL): RocketFlagClient => {
   const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
     if (!flagId) {
       throw new Error("flagId is required");
