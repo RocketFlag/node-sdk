@@ -1,6 +1,6 @@
 import { APIError, InvalidResponseError, NetworkError } from "./errors";
 import createRocketflagClient from "./index";
-import { FlagStatus } from "./index";
+import { FlagStatus, UserContext } from "./index";
 
 // Mock the global fetch function
 global.fetch = jest.fn() as jest.Mock<Promise<Response>>;
@@ -119,7 +119,15 @@ describe("createRocketflagClient", () => {
 
     it("should throw an error if flagId is not a string", async () => {
       const client = createRocketflagClient();
-      await expect(client.getFlag(123 as any, userContext)).rejects.toThrow("flagId must be a string");
+      await expect(client.getFlag(123 as unknown as string, userContext)).rejects.toThrow("flagId must be a string");
+    });
+
+    it("should throw an error if userContext contains invalid values", async () => {
+      const client = createRocketflagClient();
+      const invalidUserContext = { cohort: { a: 1 } };
+      await expect(client.getFlag(flagId, invalidUserContext as unknown as UserContext)).rejects.toThrow(
+        "userContext values must be of type string, number, or boolean. Invalid value for key: cohort"
+      );
     });
 
     it("should throw a NetworkError on network error", async () => {

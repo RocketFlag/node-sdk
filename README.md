@@ -45,6 +45,33 @@ const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {
 });
 ```
 
+## Error Handling
+
+The SDK can throw the following errors:
+
+- `APIError`: This error is thrown when the API returns a non-ok response. The error object contains the status code and status text of the response.
+- `InvalidResponseError`: This error is thrown when the API returns an invalid response. This can happen if the response is not valid JSON or if it doesn't match the expected format.
+- `NetworkError`: This error is thrown when there is a network error, such as a failed connection.
+
+```js
+import { APIError, InvalidResponseError, NetworkError } from "@rocketflag/node-sdk/errors";
+
+try {
+  const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL");
+  // ...
+} catch (error) {
+  if (error instanceof APIError) {
+    console.error(`API Error: ${error.status} ${error.statusText}`);
+  } else if (error instanceof InvalidResponseError) {
+    console.error(`Invalid Response Error: ${error.message}`);
+  } else if (error instanceof NetworkError) {
+    console.error(`Network Error: ${error.message}`);
+  } else {
+    console.error("An unknown error occurred", error);
+  }
+}
+```
+
 ## Response
 
 The response from the API on a flag will be one of three possibilities.

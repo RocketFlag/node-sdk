@@ -11,11 +11,15 @@ export type FlagStatus = {
   id: string;
 };
 
-interface UserContext {
+export interface UserContext {
   cohort?: string | number | boolean;
 }
 
-const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL) => {
+export interface RocketFlagClient {
+  getFlag: (flagId: string, context?: UserContext) => Promise<FlagStatus>;
+}
+
+const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL): RocketFlagClient => {
   const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
     if (!flagId) {
       throw new Error("flagId is required");
@@ -23,8 +27,15 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
     if (typeof flagId !== "string") {
       throw new Error("flagId must be a string");
     }
-    if (typeof userContext !== "object") {
+    if (typeof userContext !== "object" || userContext === null) {
       throw new Error("userContext must be an object");
+    }
+
+    for (const key in userContext) {
+      const value = userContext[key as keyof UserContext];
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new Error(`userContext values must be of type string, number, or boolean. Invalid value for key: ${key}`);
+      }
     }
 
     const url = new URL(`${apiUrl}/${version}/flags/${flagId}`);
@@ -44,7 +55,7 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
     let response: unknown;
     try {
       response = await raw.json();
-    } catch (error) {
+    } catch {
       throw new InvalidResponseError("Failed to parse JSON response");
     }
 
