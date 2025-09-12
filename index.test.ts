@@ -109,11 +109,30 @@ describe("createRocketflagClient", () => {
       expect(flag).toEqual(mockFlag);
     });
 
-    it("should throw an error if env contains non-alphanumeric characters", async () => {
-      const client = createRocketflagClient();
-      await expect(client.getFlag(flagId, { env: "staging+test@rocketflag.com" })).rejects.toThrow(
-        "env values must be alphanumeric. Invalid value for env: env",
-      );
+    describe("userContext validation", () => {
+      it.each([
+        { value: "staging", shouldThrow: false },
+        { value: "123", shouldThrow: false },
+        { value: "production1", shouldThrow: false },
+        { value: "test2", shouldThrow: false },
+        { value: "staging test", shouldThrow: true },
+        { value: "staging-test", shouldThrow: true },
+        { value: "staging!", shouldThrow: true },
+        { value: "staging@test", shouldThrow: true },
+        { value: "staging+test@rocketflag.com", shouldThrow: true },
+      ])("should handle env value: $value", async ({ value, shouldThrow }) => {
+        const client = createRocketflagClient();
+
+        if (shouldThrow) {
+          await expect(client.getFlag(flagId, { env: value })).rejects.toThrow(
+            "env values must be alphanumeric. Invalid value for env: env",
+          );
+        } else {
+          const mockFlag: FlagStatus = { name: "Test Flag", enabled: true, id: flagId };
+          (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+          await expect(client.getFlag(flagId, { env: value })).resolves.toEqual(mockFlag);
+        }
+      });
     });
 
     it("should throw an error if env in userContext contains invalid values", async () => {
