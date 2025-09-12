@@ -77,6 +77,53 @@ describe("createRocketflagClient", () => {
       expect(flag).toEqual(mockFlag);
     });
 
+    it("should fetch a flag with env in the user context", async () => {
+      const mockFlag: FlagStatus = { name: "Test Flag", enabled: true, id: flagId };
+      (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+
+      const client = createRocketflagClient();
+      const flag = await client.getFlag(flagId, { env: "staging" });
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+
+      const expectedUrl = `${apiUrl}/v1/flags/${flagId}?env=staging`;
+      const expectedURLObject = new URL(expectedUrl);
+
+      expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expectedURLObject.href }), { method: "GET" });
+      expect(flag).toEqual(mockFlag);
+    });
+
+    it("should fetch a flag with cohort and env in the user context", async () => {
+      const mockFlag: FlagStatus = { name: "Test Flag", enabled: true, id: flagId };
+      (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+
+      const client = createRocketflagClient();
+      const flag = await client.getFlag(flagId, { cohort: "user123", env: "staging" });
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+
+      const expectedUrl = `${apiUrl}/v1/flags/${flagId}?cohort=user123&env=staging`;
+      const expectedURLObject = new URL(expectedUrl);
+
+      expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ href: expectedURLObject.href }), { method: "GET" });
+      expect(flag).toEqual(mockFlag);
+    });
+
+    it("should throw an error if env contains non-alphanumeric characters", async () => {
+      const client = createRocketflagClient();
+      await expect(client.getFlag(flagId, { env: "staging+test@rocketflag.com" })).rejects.toThrow(
+        "env values must be alphanumeric. Invalid value for env: env",
+      );
+    });
+
+    it("should throw an error if env in userContext contains invalid values", async () => {
+      const client = createRocketflagClient();
+      const invalidUserContext = { env: { a: 1 } };
+      await expect(client.getFlag(flagId, invalidUserContext as unknown as UserContext)).rejects.toThrow(
+        "userContext values must be of type string, number, or boolean. Invalid value for key: env",
+      );
+    });
+
     it("should throw an APIError on non-ok response with correct status and statusText", async () => {
       (fetch as jest.Mock).mockResolvedValue({
         ok: false,
@@ -126,7 +173,7 @@ describe("createRocketflagClient", () => {
       const client = createRocketflagClient();
       const invalidUserContext = { cohort: { a: 1 } };
       await expect(client.getFlag(flagId, invalidUserContext as unknown as UserContext)).rejects.toThrow(
-        "userContext values must be of type string, number, or boolean. Invalid value for key: cohort"
+        "userContext values must be of type string, number, or boolean. Invalid value for key: cohort",
       );
     });
 

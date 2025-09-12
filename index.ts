@@ -4,6 +4,7 @@ import { validateFlag } from "./validateFlag";
 const GET_METHOD = "GET";
 const DEFAULT_API_URL = "https://api.rocketflag.app";
 const DEFAULT_VERSION = "v1";
+const ALPHANUMERIC_REGEX = /^[a-zA-Z0-9]+$/;
 
 export type FlagStatus = {
   name: string;
@@ -13,6 +14,7 @@ export type FlagStatus = {
 
 export interface UserContext {
   cohort?: string | number | boolean;
+  env?: string;
 }
 
 export interface RocketFlagClient {
@@ -35,6 +37,9 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
       const value = userContext[key as keyof UserContext];
       if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
         throw new Error(`userContext values must be of type string, number, or boolean. Invalid value for key: ${key}`);
+      }
+      if (key === "env" && (typeof value !== "string" || !ALPHANUMERIC_REGEX.test(value))) {
+        throw new Error(`env values must be alphanumeric. Invalid value for env: ${[key]}`);
       }
     }
 
