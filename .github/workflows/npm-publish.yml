@@ -7,6 +7,10 @@ on:
   release:
     types: [created]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,8 +19,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm test
+      - name: Clean Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
 
   publish-npm:
     needs: build
@@ -27,12 +34,18 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm run build
-      - run: |
+      - name: Update npm
+        run: npm install -g npm@latest
+      - name: Clean Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Setup Files
+        run: |
           cp -r *.md ./dist/ && \
           cp package.json ./dist/package.json && \
           cd ./dist && rm *.test.*
-      - run: npm publish ./dist --access public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+      - name: Publish
+        run: npm publish ./dist --access public
