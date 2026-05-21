@@ -217,6 +217,66 @@ describe("createRocketflagClient", () => {
       await expect(client.getFlag(flagId, userContext)).rejects.toThrow("Invalid response format: response is not an object");
     });
 
+    describe("caching", () => {
+      const mockFlag: FlagStatus = { name: "Test Flag", enabled: true, id: flagId };
+
+      it("does not cache when no TTL is configured", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        const client = createRocketflagClient();
+        await client.getFlag(flagId);
+        await client.getFlag(flagId);
+        expect(fetch).toHaveBeenCalledTimes(2);
+      });
+
+      it("returns a cached value within the default TTL", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        const client = createRocketflagClient(undefined, undefined, 60_000);
+        const first = await client.getFlag(flagId, { cohort: "beta" });
+        const second = await client.getFlag(flagId, { cohort: "beta" });
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(second).toEqual(first);
+      });
+
+      it("refetches after the TTL elapses", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        jest.useFakeTimers();
+        try {
+          const client = createRocketflagClient(undefined, undefined, 1_000);
+          await client.getFlag(flagId);
+          jest.setSystemTime(Date.now() + 1_500);
+          (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+          await client.getFlag(flagId);
+          expect(fetch).toHaveBeenCalledTimes(2);
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it("keys cache entries by user context", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        const client = createRocketflagClient(undefined, undefined, 60_000);
+        await client.getFlag(flagId, { cohort: "alpha" });
+        await client.getFlag(flagId, { cohort: "beta" });
+        expect(fetch).toHaveBeenCalledTimes(2);
+      });
+
+      it("allows per-call TTL override to disable caching", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        const client = createRocketflagClient(undefined, undefined, 60_000);
+        await client.getFlag(flagId, {}, { ttlMs: 0 });
+        await client.getFlag(flagId, {}, { ttlMs: 0 });
+        expect(fetch).toHaveBeenCalledTimes(2);
+      });
+
+      it("allows per-call TTL to enable caching without a client default", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        const client = createRocketflagClient();
+        await client.getFlag(flagId, {}, { ttlMs: 60_000 });
+        await client.getFlag(flagId, {}, { ttlMs: 60_000 });
+        expect(fetch).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it("should throw an InvalidResponseError if validateFlag fails", async () => {
       (fetch as jest.Mock).mockResolvedValue({
         ok: true,

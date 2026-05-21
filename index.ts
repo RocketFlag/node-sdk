@@ -17,12 +17,24 @@ export interface UserContext {
   env?: string;
 }
 
-export interface RocketFlagClient {
-  getFlag: (flagId: string, context?: UserContext) => Promise<FlagStatus>;
+export interface CallOptions {
+  ttlMs?: number;
 }
 
-const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL): RocketFlagClient => {
-  const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
+export interface RocketFlagClient {
+  getFlag: (flagId: string, context?: UserContext, options?: CallOptions) => Promise<FlagStatus>;
+}
+
+type CacheEntry = { flag: FlagStatus; expiresAt: number };
+
+const createRocketflagClient = (
+  version = DEFAULT_VERSION,
+  apiUrl = DEFAULT_API_URL,
+  defaultCacheTtlMs = 0,
+): RocketFlagClient => {
+  const cache: Map<string, CacheEntry> = new Map();
+
+  const getFlag = async (flagId: string, userContext: UserContext = {}, options: CallOptions = {}): Promise<FlagStatus> => {
     if (!flagId) {
       throw new Error("flagId is required");
     }
@@ -47,6 +59,19 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
     Object.entries(userContext).forEach(([key, value]) => {
       url.searchParams.append(key, value.toString());
     });
+    url.searchParams.sort();
+
+    const effectiveTtl = options.ttlMs ?? defaultCacheTtlMs;
+    const cacheKey = `${flagId}?${url.searchParams.toString()}`;
+    if (effectiveTtl > 0) {
+      const entry = cache.get(cacheKey);
+      if (entry) {
+        if (entry.expiresAt > Date.now()) {
+          return entry.flag;
+        }
+        cache.delete(cacheKey);
+      }
+    }
 
     let raw: Response;
     try {
@@ -66,6 +91,10 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
 
     if (!response || typeof response !== "object") throw new InvalidResponseError("Invalid response format: response is not an object");
     if (!validateFlag(response)) throw new InvalidResponseError("Invalid response from server");
+
+    if (effectiveTtl > 0) {
+      cache.set(cacheKey, { flag: response, expiresAt: Date.now() + effectiveTtl });
+    }
 
     return response;
   };
