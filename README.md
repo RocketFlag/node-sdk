@@ -45,6 +45,38 @@ const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {
 });
 ```
 
+### Caching responses
+
+To avoid hitting the API on every check, you can enable an in-memory cache by
+passing a default `ttlSeconds` when creating the client. Cached entries are
+keyed by flag ID **and** the user context, so different cohorts or
+environments still resolve independently.
+
+```js
+// Cache flag responses for 5 minutes.
+const rocketflag = createRocketflagClient(undefined, undefined, { ttlSeconds: 300 });
+
+// First call hits the API; subsequent calls within 5 minutes are served from cache.
+const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", { cohort: "beta" });
+```
+
+You can override the TTL for a single call, or disable caching for that call by
+passing `0`:
+
+```js
+// Force a fresh fetch, bypassing the cache.
+const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {}, { ttlSeconds: 0 });
+
+// Use a shorter TTL just for this call.
+const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {}, { ttlSeconds: 10 });
+```
+
+Caching is opt-in — without a client default or per-call TTL, every call goes
+to the API. The cache has no size cap and entries are only evicted when their
+key is re-requested after expiry; if you call with high-cardinality user
+contexts (e.g. per-user IDs), construct a new client periodically to release
+memory.
+
 ## Error Handling
 
 The SDK can throw the following errors:

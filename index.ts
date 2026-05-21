@@ -17,12 +17,27 @@ export interface UserContext {
   env?: string;
 }
 
-export interface RocketFlagClient {
-  getFlag: (flagId: string, context?: UserContext) => Promise<FlagStatus>;
+export interface CacheOptions {
+  ttlSeconds?: number;
 }
 
-const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_URL): RocketFlagClient => {
-  const getFlag = async (flagId: string, userContext: UserContext = {}): Promise<FlagStatus> => {
+export type CallOptions = CacheOptions;
+
+export interface RocketFlagClient {
+  getFlag: (flagId: string, context?: UserContext, options?: CallOptions) => Promise<FlagStatus>;
+}
+
+type CacheEntry = { flag: FlagStatus; expiresAt: number };
+
+const createRocketflagClient = (
+  version = DEFAULT_VERSION,
+  apiUrl = DEFAULT_API_URL,
+  cacheOptions: CacheOptions = {},
+): RocketFlagClient => {
+  const defaultTtlMs = cacheOptions.ttlSeconds !== undefined ? cacheOptions.ttlSeconds * 1_000 : 0;
+  const cache: Map<string, CacheEntry> = new Map();
+
+  const getFlag = async (flagId: string, userContext: UserContext = {}, options: CallOptions = {}): Promise<FlagStatus> => {
     if (!flagId) {
       throw new Error("flagId is required");
     }
@@ -48,6 +63,21 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
       url.searchParams.append(key, value.toString());
     });
 
+    const effectiveTtl = options.ttlSeconds !== undefined ? options.ttlSeconds * 1_000 : defaultTtlMs;
+    let cacheKey = "";
+    if (effectiveTtl > 0) {
+      const sortedParams = new URLSearchParams(url.searchParams);
+      sortedParams.sort();
+      cacheKey = `${flagId}?${sortedParams.toString()}`;
+      const entry = cache.get(cacheKey);
+      if (entry) {
+        if (entry.expiresAt > Date.now()) {
+          return structuredClone(entry.flag);
+        }
+        cache.delete(cacheKey);
+      }
+    }
+
     let raw: Response;
     try {
       raw = await fetch(url, { method: GET_METHOD });
@@ -66,6 +96,10 @@ const createRocketflagClient = (version = DEFAULT_VERSION, apiUrl = DEFAULT_API_
 
     if (!response || typeof response !== "object") throw new InvalidResponseError("Invalid response format: response is not an object");
     if (!validateFlag(response)) throw new InvalidResponseError("Invalid response from server");
+
+    if (effectiveTtl > 0) {
+      cache.set(cacheKey, { flag: structuredClone(response), expiresAt: Date.now() + effectiveTtl });
+    }
 
     return response;
   };
