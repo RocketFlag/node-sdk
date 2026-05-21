@@ -228,20 +228,28 @@ describe("createRocketflagClient", () => {
         expect(fetch).toHaveBeenCalledTimes(2);
       });
 
-      it("returns a cached value within the default TTL", async () => {
+      it("returns a cached value within the default TTL (ttlMinutes)", async () => {
         (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
-        const client = createRocketflagClient(undefined, undefined, 60_000);
+        const client = createRocketflagClient(undefined, undefined, { ttlMinutes: 1 });
         const first = await client.getFlag(flagId, { cohort: "beta" });
         const second = await client.getFlag(flagId, { cohort: "beta" });
         expect(fetch).toHaveBeenCalledTimes(1);
         expect(second).toEqual(first);
       });
 
+      it("returns a cached value within the default TTL (ttlSeconds)", async () => {
+        (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+        const client = createRocketflagClient(undefined, undefined, { ttlSeconds: 30 });
+        await client.getFlag(flagId);
+        await client.getFlag(flagId);
+        expect(fetch).toHaveBeenCalledTimes(1);
+      });
+
       it("refetches after the TTL elapses", async () => {
         (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
         jest.useFakeTimers();
         try {
-          const client = createRocketflagClient(undefined, undefined, 1_000);
+          const client = createRocketflagClient(undefined, undefined, { ttlSeconds: 1 });
           await client.getFlag(flagId);
           jest.setSystemTime(Date.now() + 1_500);
           (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
@@ -254,7 +262,7 @@ describe("createRocketflagClient", () => {
 
       it("keys cache entries by user context", async () => {
         (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
-        const client = createRocketflagClient(undefined, undefined, 60_000);
+        const client = createRocketflagClient(undefined, undefined, { ttlMinutes: 1 });
         await client.getFlag(flagId, { cohort: "alpha" });
         await client.getFlag(flagId, { cohort: "beta" });
         expect(fetch).toHaveBeenCalledTimes(2);
@@ -262,18 +270,31 @@ describe("createRocketflagClient", () => {
 
       it("allows per-call TTL override to disable caching", async () => {
         (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
-        const client = createRocketflagClient(undefined, undefined, 60_000);
-        await client.getFlag(flagId, {}, { ttlMs: 0 });
-        await client.getFlag(flagId, {}, { ttlMs: 0 });
+        const client = createRocketflagClient(undefined, undefined, { ttlMinutes: 1 });
+        await client.getFlag(flagId, {}, { ttlSeconds: 0 });
+        await client.getFlag(flagId, {}, { ttlSeconds: 0 });
         expect(fetch).toHaveBeenCalledTimes(2);
       });
 
       it("allows per-call TTL to enable caching without a client default", async () => {
         (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
         const client = createRocketflagClient();
-        await client.getFlag(flagId, {}, { ttlMs: 60_000 });
-        await client.getFlag(flagId, {}, { ttlMs: 60_000 });
+        await client.getFlag(flagId, {}, { ttlMinutes: 1 });
+        await client.getFlag(flagId, {}, { ttlMinutes: 1 });
         expect(fetch).toHaveBeenCalledTimes(1);
+      });
+
+      it("throws if both ttlSeconds and ttlMinutes are set on client", () => {
+        expect(() =>
+          createRocketflagClient(undefined, undefined, { ttlSeconds: 30, ttlMinutes: 1 }),
+        ).toThrow("client cache options cannot specify both ttlSeconds and ttlMinutes");
+      });
+
+      it("throws if both ttlSeconds and ttlMinutes are set per call", async () => {
+        const client = createRocketflagClient();
+        await expect(client.getFlag(flagId, {}, { ttlSeconds: 30, ttlMinutes: 1 })).rejects.toThrow(
+          "call cache options cannot specify both ttlSeconds and ttlMinutes",
+        );
       });
     });
 

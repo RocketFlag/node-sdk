@@ -17,8 +17,14 @@ export interface UserContext {
   env?: string;
 }
 
+export interface CacheOptions {
+  ttlSeconds?: number;
+  ttlMinutes?: number;
+}
+
 export interface CallOptions {
-  ttlMs?: number;
+  ttlSeconds?: number;
+  ttlMinutes?: number;
 }
 
 export interface RocketFlagClient {
@@ -27,11 +33,21 @@ export interface RocketFlagClient {
 
 type CacheEntry = { flag: FlagStatus; expiresAt: number };
 
+const resolveTtlMs = (opts: CacheOptions | CallOptions, label: string): number | undefined => {
+  if (opts.ttlSeconds !== undefined && opts.ttlMinutes !== undefined) {
+    throw new Error(`${label} cache options cannot specify both ttlSeconds and ttlMinutes`);
+  }
+  if (opts.ttlSeconds !== undefined) return opts.ttlSeconds * 1_000;
+  if (opts.ttlMinutes !== undefined) return opts.ttlMinutes * 60_000;
+  return undefined;
+};
+
 const createRocketflagClient = (
   version = DEFAULT_VERSION,
   apiUrl = DEFAULT_API_URL,
-  defaultCacheTtlMs = 0,
+  cacheOptions: CacheOptions = {},
 ): RocketFlagClient => {
+  const defaultTtlMs = resolveTtlMs(cacheOptions, "client") ?? 0;
   const cache: Map<string, CacheEntry> = new Map();
 
   const getFlag = async (flagId: string, userContext: UserContext = {}, options: CallOptions = {}): Promise<FlagStatus> => {
@@ -61,7 +77,8 @@ const createRocketflagClient = (
     });
     url.searchParams.sort();
 
-    const effectiveTtl = options.ttlMs ?? defaultCacheTtlMs;
+    const callTtlMs = resolveTtlMs(options, "call");
+    const effectiveTtl = callTtlMs ?? defaultTtlMs;
     const cacheKey = `${flagId}?${url.searchParams.toString()}`;
     if (effectiveTtl > 0) {
       const entry = cache.get(cacheKey);
