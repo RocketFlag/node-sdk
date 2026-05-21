@@ -19,13 +19,9 @@ export interface UserContext {
 
 export interface CacheOptions {
   ttlSeconds?: number;
-  ttlMinutes?: number;
 }
 
-export interface CallOptions {
-  ttlSeconds?: number;
-  ttlMinutes?: number;
-}
+export type CallOptions = CacheOptions;
 
 export interface RocketFlagClient {
   getFlag: (flagId: string, context?: UserContext, options?: CallOptions) => Promise<FlagStatus>;
@@ -33,21 +29,12 @@ export interface RocketFlagClient {
 
 type CacheEntry = { flag: FlagStatus; expiresAt: number };
 
-const resolveTtlMs = (opts: CacheOptions | CallOptions, label: string): number | undefined => {
-  if (opts.ttlSeconds !== undefined && opts.ttlMinutes !== undefined) {
-    throw new Error(`${label} cache options cannot specify both ttlSeconds and ttlMinutes`);
-  }
-  if (opts.ttlSeconds !== undefined) return opts.ttlSeconds * 1_000;
-  if (opts.ttlMinutes !== undefined) return opts.ttlMinutes * 60_000;
-  return undefined;
-};
-
 const createRocketflagClient = (
   version = DEFAULT_VERSION,
   apiUrl = DEFAULT_API_URL,
   cacheOptions: CacheOptions = {},
 ): RocketFlagClient => {
-  const defaultTtlMs = resolveTtlMs(cacheOptions, "client") ?? 0;
+  const defaultTtlMs = cacheOptions.ttlSeconds !== undefined ? cacheOptions.ttlSeconds * 1_000 : 0;
   const cache: Map<string, CacheEntry> = new Map();
 
   const getFlag = async (flagId: string, userContext: UserContext = {}, options: CallOptions = {}): Promise<FlagStatus> => {
@@ -75,16 +62,17 @@ const createRocketflagClient = (
     Object.entries(userContext).forEach(([key, value]) => {
       url.searchParams.append(key, value.toString());
     });
-    url.searchParams.sort();
 
-    const callTtlMs = resolveTtlMs(options, "call");
-    const effectiveTtl = callTtlMs ?? defaultTtlMs;
-    const cacheKey = `${flagId}?${url.searchParams.toString()}`;
+    const effectiveTtl = options.ttlSeconds !== undefined ? options.ttlSeconds * 1_000 : defaultTtlMs;
+    let cacheKey = "";
     if (effectiveTtl > 0) {
+      const sortedParams = new URLSearchParams(url.searchParams);
+      sortedParams.sort();
+      cacheKey = `${flagId}?${sortedParams.toString()}`;
       const entry = cache.get(cacheKey);
       if (entry) {
         if (entry.expiresAt > Date.now()) {
-          return entry.flag;
+          return structuredClone(entry.flag);
         }
         cache.delete(cacheKey);
       }
@@ -110,7 +98,7 @@ const createRocketflagClient = (
     if (!validateFlag(response)) throw new InvalidResponseError("Invalid response from server");
 
     if (effectiveTtl > 0) {
-      cache.set(cacheKey, { flag: response, expiresAt: Date.now() + effectiveTtl });
+      cache.set(cacheKey, { flag: structuredClone(response), expiresAt: Date.now() + effectiveTtl });
     }
 
     return response;

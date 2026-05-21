@@ -48,14 +48,13 @@ const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {
 ### Caching responses
 
 To avoid hitting the API on every check, you can enable an in-memory cache by
-passing a default TTL when creating the client. Provide **either**
-`ttlSeconds` or `ttlMinutes` — providing both throws. Cached entries are keyed
-by flag ID **and** the user context, so different cohorts or environments
-still resolve independently.
+passing a default `ttlSeconds` when creating the client. Cached entries are
+keyed by flag ID **and** the user context, so different cohorts or
+environments still resolve independently.
 
 ```js
 // Cache flag responses for 5 minutes.
-const rocketflag = createRocketflagClient(undefined, undefined, { ttlMinutes: 5 });
+const rocketflag = createRocketflagClient(undefined, undefined, { ttlSeconds: 300 });
 
 // First call hits the API; subsequent calls within 5 minutes are served from cache.
 const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", { cohort: "beta" });
@@ -73,7 +72,10 @@ const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {}, { ttlSeconds: 10 }
 ```
 
 Caching is opt-in — without a client default or per-call TTL, every call goes
-to the API.
+to the API. The cache has no size cap and entries are only evicted when their
+key is re-requested after expiry; if you call with high-cardinality user
+contexts (e.g. per-user IDs), construct a new client periodically to release
+memory.
 
 ## Error Handling
 
