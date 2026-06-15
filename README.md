@@ -10,6 +10,18 @@ effectively.
 npm install @rocketflag/node-sdk
 ```
 
+The SDK ships both ES module and CommonJS builds, so it works with modern
+bundlers (Vite, Angular, webpack, …) and Node — via either `import` or
+`require` — on Node 18 and above.
+
+```js
+// ESM / bundlers
+import createRocketflagClient from "@rocketflag/node-sdk";
+
+// CommonJS
+const { default: createRocketflagClient } = require("@rocketflag/node-sdk");
+```
+
 ## Basic Usage
 
 ### Setup

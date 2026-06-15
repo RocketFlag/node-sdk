@@ -46,6 +46,6 @@ jobs:
         run: |
           cp -r *.md ./dist/ && \
           cp package.json ./dist/package.json && \
-          cd ./dist && rm *.test.*
+          rm -f ./dist/cjs/*.test.* ./dist/esm/*.test.*
       - name: Publish
         run: npm publish ./dist --access public
