@@ -89,7 +89,12 @@ const config = {
   // ],
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
-  // moduleNameMapper: {},
+  // Source files use explicit ".js" extensions on relative imports (required for
+  // the ESM build to resolve at runtime). Strip them so ts-jest resolves the
+  // ".ts" sources during testing.
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
   // modulePathIgnorePatterns: [],
@@ -160,9 +165,10 @@ const config = {
   // ],
 
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
-  // testPathIgnorePatterns: [
-  //   "/node_modules/"
-  // ],
+  // Ignore the compiled output: the CI test job runs against a populated ./dist,
+  // and its ESM build can't be executed by Jest's CommonJS runner. Tests run
+  // from the TypeScript sources only.
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 
   // The regexp pattern or array of patterns that Jest uses to detect test files
   // testRegex: [],

@@ -1,5 +1,5 @@
-import { APIError, InvalidResponseError, NetworkError } from "./errors";
-import { validateFlag } from "./validateFlag";
+import { APIError, InvalidResponseError, NetworkError } from "./errors.js";
+import { validateFlag } from "./validateFlag.js";
 
 const GET_METHOD = "GET";
 const DEFAULT_API_URL = "https://api.rocketflag.app";
