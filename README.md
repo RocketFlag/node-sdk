@@ -57,6 +57,52 @@ const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {
 });
 ```
 
+### Sticky rollouts and audiences
+
+Pass a `targetingKey` to make percentage rollouts sticky, and any other keys as
+audience attributes:
+
+```ts
+const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {
+  targetingKey: user.id,
+  plan: "pro",
+  country: "AU",
+});
+```
+
+- **`targetingKey`**: a stable identifier for the user. The same key always
+  gets the same answer from a percentage rollout, in every environment of a
+  group flag, and raising the percentage only ever adds users. Without a
+  `targetingKey` the `cohort` is used, and with neither each request is a fresh
+  random roll. Prefer an opaque id over an email address: the key is part of
+  the request URL.
+- **Any other key** is an audience attribute, matched against the flag's
+  audience exactly and case-sensitively. An attribute you don't send never
+  matches. `cohort`, `env` and `targetingKey` are reserved and can't be
+  audience attributes.
+
+Every context value must be a `string`, `number` or `boolean`. Leave out an
+attribute you don't have rather than passing it as `undefined`. The
+`UserContext` type rejects a value that may be `undefined`, such as
+`{ plan: user.plan }`. TypeScript can't see through an optional property on an
+object you've typed yourself, so that case throws at runtime instead.
+
+```ts
+import type { UserContext } from "@rocketflag/node-sdk";
+
+const context: UserContext = { targetingKey: user.id };
+if (user.plan) context.plan = user.plan;
+```
+
+### Group flags (environments)
+
+Select the environment of a group flag with `env`. Environment names contain
+letters, numbers, hyphens and underscores.
+
+```js
+const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", { env: "production" });
+```
+
 ### Caching responses
 
 To avoid hitting the API on every check, you can enable an in-memory cache by
@@ -83,11 +129,15 @@ const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {}, { ttlSeconds: 0 })
 const flag = await rocketflag.getFlag("IFldMzqP5jtv9wAL", {}, { ttlSeconds: 10 });
 ```
 
-Caching is opt-in — without a client default or per-call TTL, every call goes
-to the API. The cache has no size cap and entries are only evicted when their
-key is re-requested after expiry; if you call with high-cardinality user
-contexts (e.g. per-user IDs), construct a new client periodically to release
-memory.
+Caching is opt-in: without a client default or per-call TTL, every call goes
+to the API. Each distinct context is its own cache entry, so a `targetingKey`
+per user means an entry per user. The cache holds at most 10,000 entries and
+evicts the least recently used one when it is full. Change the cap with
+`maxEntries`:
+
+```js
+const rocketflag = createRocketflagClient(undefined, undefined, { ttlSeconds: 300, maxEntries: 50_000 });
+```
 
 ## Error Handling
 
