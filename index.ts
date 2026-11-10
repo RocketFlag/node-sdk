@@ -45,6 +45,8 @@ export interface CacheOptions {
 
 export interface CallOptions {
   ttlSeconds?: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 export interface RocketFlagClient {
@@ -74,6 +76,9 @@ const createRocketflagClient = (
     if (typeof flagId !== "string") {
       throw new Error("flagId must be a string");
     }
+    if (flagId === "." || flagId === ".." || /[\\/]/.test(flagId)) {
+      throw new Error("flagId must not contain path separators or relative segments");
+    }
     if (typeof userContext !== "object" || userContext === null) {
       throw new Error("userContext must be an object");
     }
@@ -88,7 +93,8 @@ const createRocketflagClient = (
       }
     }
 
-    const url = new URL(`${apiUrl}/${version}/flags/${flagId}`);
+    const base = apiUrl.replace(/\/+$/, "");
+    const url = new URL(`${base}/${encodeURIComponent(version)}/flags/${encodeURIComponent(flagId)}`);
     Object.entries(userContext).forEach(([key, value]) => {
       url.searchParams.append(key, value.toString());
     });
@@ -110,8 +116,14 @@ const createRocketflagClient = (
     }
 
     let raw: Response;
+    const signal =
+      options.signal ??
+      (options.timeoutMs !== undefined && options.timeoutMs > 0
+        ? AbortSignal.timeout(options.timeoutMs)
+        : undefined);
+    const requestInit: RequestInit = signal !== undefined ? { method: GET_METHOD, signal } : { method: GET_METHOD };
     try {
-      raw = await fetch(url, { method: GET_METHOD });
+      raw = await fetch(url, requestInit);
     } catch (error) {
       throw new NetworkError(`Network error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
