@@ -254,6 +254,21 @@ describe("createRocketflagClient", () => {
       await expect(client.getFlag(123 as unknown as string, userContext)).rejects.toThrow("flagId must be a string");
     });
 
+    it.each([".", "..", "../admin", "a/b", "a\\b"])("should reject traversal or slash flagId %s", async (badId) => {
+      const client = createRocketflagClient();
+      await expect(client.getFlag(badId)).rejects.toThrow("flagId must not contain path separators or relative segments");
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("percent-encodes special characters in flagId", async () => {
+      const mockFlag: FlagStatus = { name: "Test Flag", enabled: true, id: "flag#1?test" };
+      (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFlag) });
+      const client = createRocketflagClient();
+      await client.getFlag("flag#1?test");
+      const calledUrl = (fetch as jest.Mock).mock.calls[0][0] as URL;
+      expect(calledUrl.pathname).toBe("/v1/flags/flag%231%3Ftest");
+    });
+
     it("should throw an error if userContext contains invalid values", async () => {
       const client = createRocketflagClient();
       const invalidUserContext = { cohort: { a: 1 } };
